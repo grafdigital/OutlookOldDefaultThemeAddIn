@@ -9,6 +9,9 @@ on:
   pull_request:
     branches: [ "master" ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -42,3 +45,16 @@ jobs:
       with:
         name: OneClickInstaller
         path: ${{github.workspace}}\OutlookOldDefaultThemeAddIn\bin\Release\app.publish
+
+    - name: Create Archive for Release
+      run: |
+        Compress-Archive -Path "${{github.workspace}}\OutlookOldDefaultThemeAddIn\bin\Release\app.publish\*" OneClickInstaller.zip
+
+    - name: Create & Upload Release
+      uses: ncipollo/release-action@v1
+      with:
+        prerelease: true
+        artifacts: "OneClickInstaller.zip"
+        allowUpdates: true
+        body: ${{ github.event.head_commit.message }}
+        tag: nightly-${{ github.sha }}

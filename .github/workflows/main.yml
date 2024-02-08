@@ -1,0 +1,54 @@
+# $pfx_cert = Get-Content '.\SigningCertificate.pfx' -Encoding Byte
+# [System.Convert]::ToBase64String($pfx_cert) | Write-Host
+
+name: Build and Publish Add-In
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    env:
+      SIGNCERTPATH: "%TEMP%/certificate.pfx"
+      SLNNAME: "OutlookOldDefaultThemeAddIn.sln"
+      PROJPATH: "OutlookOldDefaultThemeAddIn\\OutlookOldDefaultThemeAddIn.csproj"
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 4.7.2
+
+    - name: Setup MSBuild.exe
+      uses: microsoft/setup-msbuild@v1.0.2
+  
+    - name: Build VSTO
+      run: msbuild ${{github.workspace}}\${{env. -t:rebuild /p:Platform="Any CPU" /p:Configuration="Release" /nologo /nr:false /p:VisualStudioVersion="17.0"
+
+    #- name: Decode the pfx
+    #  run: |
+    #    $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.signingcert }}")
+    #    $certificatePath = Join-Path -Path $env:SIGNCERTPATH -ChildPath GitHubActionsWorkflow.pfx
+    #    [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+
+    - name: Setup VS Dev Environment
+      uses: seanmiddleditch/gha-setup-vsdevenv@v4
+      
+    - name: Build installer
+      run: devenv.com ${{github.workspace}}\${{env.PROJPATH}} /build "Release|Any CPU"
+
+    - name: Upload Installer
+      uses: actions/upload-artifact@v2
+      with:
+        name: installer
+        path: ${{github.workspace}}\\${{env.PROJPATH}}\\Output\\Release

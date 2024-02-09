@@ -35,16 +35,42 @@ jobs:
     - name: Build VSTO
       run: msbuild ${{github.workspace}}\OutlookOldDefaultThemeAddIn.sln /target:"clean;publish" /p:Platform="Any CPU" /p:Configuration="Release" /p:VisualStudioVersion="17.0"
 
+    - name: Setup VS Dev Environment
+      uses: seanmiddleditch/gha-setup-vsdevenv@v4
+
+    - name: DisableOutOfProc Fix
+      run: |
+        function Invoke-DisableOutOfProcBuild {
+          param ();
+          $visualStudioWherePath = ('{0}/Microsoft Visual Studio/Installer/vswhere.exe' -f ${Env:ProgramFiles(x86)});
+          $visualStudioInstallationPath = & $visualStudioWherePath -latest -products 'Microsoft.VisualStudio.Product.Enterprise' -property 'installationPath';
+          $currentWorkingDirectory = ('{0}/Common7/IDE/CommonExtensions/Microsoft/VSI/DisableOutOfProcBuild' -f $visualStudioInstallationPath);
+          Set-Location -Path $currentWorkingDirectory;
+          $disableOutOfProcBuildPath = ('{0}/DisableOutOfProcBuild.exe' -f $currentWorkingDirectory);
+          & $disableOutOfProcBuildPath;
+          return;
+        }
+        Invoke-DisableOutOfProcBuild
+
+    - name: Build installer
+      run: devenv.com ${{github.workspace}}\OutlookOldDefaultThemeAddIn.sln /Project ${{github.workspace}}\OutlookOldDefaultThemeAddInInstaller\OutlookOldDefaultThemeAddInInstaller.vdproj /build "Release|Any CPU"
+
     - name: Remove the pfx
       run: |
         Remove-Item -Path ${{github.workspace}}\OutlookOldDefaultThemeAddIn\OutlookOldDefaultThemeAddIn_TemporaryKey.pfx
         Get-ChildItem -Path Cert:\CurrentUser\My | ForEach-Object { Remove-Item $_.PSPath }
 
-    - name: Upload Installer
+    - name: Upload Installer Exe
       uses: actions/upload-artifact@v4
       with:
         name: OneClickInstaller
         path: ${{github.workspace}}\OutlookOldDefaultThemeAddIn\bin\Release\app.publish
+
+    - name: Upload Installer Msi
+      uses: actions/upload-artifact@v4
+      with:
+        name: MsiInstaller
+        path: ${{github.workspace}}\OutlookOldDefaultThemeAddInInstaller\Release\OutlookOldDefaultThemeAddInInstaller.msi
 
     - name: Create Archive for Release
       run: |
@@ -54,7 +80,7 @@ jobs:
       uses: ncipollo/release-action@v1
       with:
         prerelease: true
-        artifacts: "OneClickInstaller.zip"
+        artifacts: "OneClickInstaller.zip,OutlookOldDefaultThemeAddInInstaller\\Release\\OutlookOldDefaultThemeAddInInstaller.msi"
         allowUpdates: true
         body: ${{ github.event.head_commit.message }}
         tag: nightly-${{ github.sha }}

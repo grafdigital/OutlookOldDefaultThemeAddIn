@@ -5,6 +5,14 @@ VisualStudioVersion = 17.8.34408.163
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OutlookOldDefaultThemeAddIn", "OutlookOldDefaultThemeAddIn\OutlookOldDefaultThemeAddIn.csproj", "{54BE372A-E0E6-4875-9C80-08C05BC7AFC0}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9BF6DDFE-6730-4E57-8702-479EABD516A8}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\main.yml = .github\workflows\main.yml
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "OutlookOldDefaultThemeAddInInstaller", "OutlookOldDefaultThemeAddInInstaller\OutlookOldDefaultThemeAddInInstaller.vdproj", "{AC67299B-B900-4FF8-8F94-1763A9496E60}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +23,8 @@ Global
 		{54BE372A-E0E6-4875-9C80-08C05BC7AFC0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{54BE372A-E0E6-4875-9C80-08C05BC7AFC0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{54BE372A-E0E6-4875-9C80-08C05BC7AFC0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AC67299B-B900-4FF8-8F94-1763A9496E60}.Debug|Any CPU.ActiveCfg = Debug
+		{AC67299B-B900-4FF8-8F94-1763A9496E60}.Release|Any CPU.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

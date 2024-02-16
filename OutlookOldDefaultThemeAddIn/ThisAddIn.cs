@@ -19,9 +19,13 @@ namespace OutlookOldDefaultThemeAddIn
         {
             try
             {
-                templatePath = Registry.LocalMachine
-                    .OpenSubKey(@"SOFTWARE\Microsoft\Office\ClickToRun\Configuration")?
-                    .GetValue("InstallationPath") as string;
+                // https://stackoverflow.com/questions/13728491/opensubkey-returns-null-for-a-registry-key-that-i-can-see-in-regedit-exe
+                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                {
+                    templatePath = hklm
+                        .OpenSubKey(@"SOFTWARE\Microsoft\Office\ClickToRun\Configuration")?
+                        .GetValue("InstallationPath") as string;
+                }
 
                 var targetTemplate = Registry.CurrentUser
                     .OpenSubKey(@"Software\Microsoft\Office\16.0\Common\MailSettings")?
@@ -45,27 +49,35 @@ namespace OutlookOldDefaultThemeAddIn
 
         private void Application_ItemLoad(object Item)
         {
-            if(Item != null && Item is Outlook.MailItem) {
+            if (Item != null && Item is Outlook.MailItem) {
                 var item = (Item as Outlook.MailItem);
-                if(!item.Sent)
-                    item.Open += (ref bool cancel) => MailItem_Open(ref cancel, item);
+
+                // We are not 100% happy with doing this for every MailItem,
+                // initially we checked beforehand if the mail was sent, but
+                // this led to inconsistent COM-Exceptions, which we assume
+                // to be from the mail not being fully loaded..
+                item.Open += (ref bool cancel) => MailItem_Open(ref cancel, item);
             }
         }
 
         private void MailItem_Open(ref bool Cancel, Outlook.MailItem Item)
         {
+            // Checking to only run code if it's a new mail
+            if (Item == null || Item.Sent)
+                return;
+
             // We got exceptions in the VBA Prototype
             // but it still set the template, so we just catch
             // any exceptions here, to prevent a bad UX.
             try
             {
                 var inspector = Item.GetInspector;
-                if (inspector != null &&
-                    inspector.EditorType == OlEditorType.olEditorWord &&
-                    inspector.WordEditor != null &&
-                    !string.IsNullOrEmpty(templatePath))
+                if (inspector != null && !string.IsNullOrEmpty(templatePath))
                 {
-                    inspector.WordEditor.ApplyDocumentTheme(templatePath);
+                    if (inspector.EditorType == OlEditorType.olEditorWord && inspector.WordEditor != null)
+                        inspector.WordEditor.ApplyDocumentTheme(templatePath);
+                    else if (inspector.EditorType == OlEditorType.olEditorHTML && inspector.HTMLEditor != null)
+                        inspector.HTMLEditor.ApplyDocumentTheme(templatePath);
                 }
             }
             catch (System.Exception) { }

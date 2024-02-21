@@ -47,8 +47,13 @@ namespace OutlookOldDefaultThemeAddIn
             if(templatePath != null)
                 this.Application.ItemLoad += Application_ItemLoad;
 
+            // This would be a cleaner approach
+            // but we can only get it to reliably
+            // work in some versions of Outlook..
+            /*
             var explorer = this.Application.ActiveExplorer();
             explorer.InlineResponse += (object item) => FixReadingPaneTheme(item as Outlook.MailItem);
+            */
         }
 
         private void Application_ItemLoad(object Item)
@@ -61,14 +66,29 @@ namespace OutlookOldDefaultThemeAddIn
                 // this led to inconsistent COM-Exceptions, which we assume
                 // to be from the mail not being fully loaded..
                 item.Open += (ref bool cancel) => SetDocumentThemeForMail(item);
+
+                // Hooking into all the button events. This could lead to
+                // unexpected behavoir if the user replies to multiple emails
+                // at the same time, if one of them is in the reading pane.
+                // If not we should be fine due to the NULL check
+                // on ActiveInlineResponseWordEditor.
+                var itemWithEvent = item as ItemEvents_10_Event;
+                itemWithEvent.Reply += (object response, ref bool cancel) => FixReadingPaneTheme(response as Outlook.MailItem);
+                itemWithEvent.ReplyAll += (object response, ref bool cancel) => FixReadingPaneTheme(response as Outlook.MailItem);
+                itemWithEvent.Forward += (object forward, ref bool cancel) => FixReadingPaneTheme(forward as Outlook.MailItem);
             }
         }
 
         private void FixReadingPaneTheme(Outlook.MailItem Item)
         {
-            var explorer = this.Application.ActiveExplorer();
-            if (explorer != null && explorer.ActiveInlineResponseWordEditor != null)
-                explorer.ActiveInlineResponseWordEditor.ApplyDocumentTheme(templatePath);
+            // Without the 1sec delay, it won't work
+            // on every Client we've tested..
+            new Timer((state) =>
+            {
+                var explorer = this.Application.ActiveExplorer();
+                if (explorer != null && explorer.ActiveInlineResponseWordEditor != null)
+                    explorer.ActiveInlineResponseWordEditor.ApplyDocumentTheme(templatePath);
+            }, null, 1000, Timeout.Infinite);
         }
 
         private void SetDocumentThemeForMail(Outlook.MailItem Item)

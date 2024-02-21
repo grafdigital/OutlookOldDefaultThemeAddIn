@@ -8,6 +8,7 @@ using Office = Microsoft.Office.Core;
 using Microsoft.Office.Interop.Outlook;
 using Microsoft.Win32;
 using System.IO;
+using System.Threading;
 
 namespace OutlookOldDefaultThemeAddIn
 {
@@ -56,11 +57,57 @@ namespace OutlookOldDefaultThemeAddIn
                 // initially we checked beforehand if the mail was sent, but
                 // this led to inconsistent COM-Exceptions, which we assume
                 // to be from the mail not being fully loaded..
-                item.Open += (ref bool cancel) => MailItem_Open(ref cancel, item);
+                item.Open += (ref bool cancel) => SetDocumentThemeForMail(item);
+
+                var itemWithEvent = item as ItemEvents_10_Event;
+                itemWithEvent.Reply += (object response, ref bool cancel) => FixReadingPaneTheme(response as Outlook.MailItem);
+                itemWithEvent.ReplyAll += (object response, ref bool cancel) => FixReadingPaneTheme(response as Outlook.MailItem);
+                itemWithEvent.Forward += (object forward, ref bool cancel) => FixReadingPaneTheme(forward as Outlook.MailItem);
             }
         }
 
-        private void MailItem_Open(ref bool Cancel, Outlook.MailItem Item)
+
+        private void FixReadingPaneTheme(Outlook.MailItem Item)
+        {
+            new Timer((state) =>
+            {
+                Explorer explorer = this.Application.ActiveExplorer();
+                explorer.ActiveInlineResponseWordEditor.ApplyDocumentTheme(templatePath);
+            }, null, 1000, Timeout.Infinite);
+
+            return;
+
+
+            // Checking to only run code if it's a new mail
+            if (Item == null || Item.Sent)
+                return;
+
+            var inspector = Item.GetInspector;
+            if (inspector != null && !string.IsNullOrEmpty(templatePath))
+            {
+                // This fixes applying the theme in the sidepanel
+                // but it introduces this weird behavoir where it opens
+                // the same mail in the background as a new window.
+                // Since it closes it and keeps it in sync with the
+                // sidepanel, it seems to be a necessary evil..
+                // Using .Display() instead of .Activate() would work too.
+                inspector.Activate();
+
+                // This works to get rid of the extra window, but
+                // decided to not include it, since it's probably
+                // worse than just keeping a editor window open in
+                // the background and letting Outlook handle it.
+                /*
+                new Timer((state) =>
+                {
+                    inspector.Close(OlInspectorClose.olDiscard);
+                }, null, 500, Timeout.Infinite);
+                */
+            }
+        }
+
+
+        private void SetDocumentThemeForMail(Outlook.MailItem Item)
         {
             // Checking to only run code if it's a new mail
             if (Item == null || Item.Sent)
@@ -74,6 +121,13 @@ namespace OutlookOldDefaultThemeAddIn
                 var inspector = Item.GetInspector;
                 if (inspector != null && !string.IsNullOrEmpty(templatePath))
                 {
+                    // This fixes applying the theme in the sidepanel
+                    // but it introduces this weird behavoir where it opens
+                    // the same mail in the background as a new window.
+                    // Since it closes it and keeps it in sync with the
+                    // sidepanel, it seems to be a necessary evil..
+                    //inspector.Activate();
+
                     if (inspector.EditorType == OlEditorType.olEditorWord && inspector.WordEditor != null)
                         inspector.WordEditor.ApplyDocumentTheme(templatePath);
                     else if (inspector.EditorType == OlEditorType.olEditorHTML && inspector.HTMLEditor != null)

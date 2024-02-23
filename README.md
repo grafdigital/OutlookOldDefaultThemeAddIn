@@ -7,3 +7,5 @@ The Add-In hooks into the [ItemOpen-event](https://learn.microsoft.com/en-us/dot
 By default it will change to `Office 2013 - 2022 Theme.thmx`.
 
 You can specify a different theme by creating a registry-key under `HKCU\Software\Microsoft\Office\16.0\Common\MailSettings` called `OverrideTheme`. The Add-In will then look for the theme in `{OfficeInstallationPath}\root\Document Themes 16`.
+
+Note: The inline response pane still doesn't 100% work reliably as the method with the highest success rate is a 1sec delay after clicking Reply/Forward, and then setting the document theme.
